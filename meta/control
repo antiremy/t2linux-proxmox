@@ -1,0 +1,11 @@
+Package: proxmox-kernel-t2
+Version: @VERSION@
+Architecture: amd64
+Maintainer: t2linux-proxmox <antiremy@users.noreply.github.com>
+Depends: proxmox-kernel-@KVNAME@, proxmox-headers-@KVNAME@
+Section: kernel
+Priority: optional
+Homepage: https://github.com/antiremy/t2linux-proxmox
+Description: Newest Proxmox VE kernel with T2 Mac support
+ Pulls in the newest Proxmox kernel built with the t2linux patches
+ and pins it as the default boot kernel.

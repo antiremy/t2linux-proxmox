@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+[ "$1" = configure ] || exit 0
+command -v proxmox-boot-tool >/dev/null || exit 0
+
+proxmox-boot-tool kernel pin @KVNAME@ </dev/null
+if [ -f /etc/kernel/proxmox-boot-uuids ]; then
+	proxmox-boot-tool refresh
+fi

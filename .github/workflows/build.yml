@@ -9,10 +9,16 @@ on:
       - config-t2.opts
       - patches/**
       - build.sh
+      - publish-apt.sh
+      - meta/**
       - .github/workflows/build.yml
 
 permissions:
   contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -46,6 +52,24 @@ jobs:
           source config.env
           kernel=$(ls out/proxmox-kernel-*-pve_*.deb | grep -v signed | head -1 | sed 's|out/proxmox-kernel-||; s|_.*||')
           tag="v${kernel}.${T2_REL}"
-          gh release create "$tag" out/*.deb \
-            --title "$kernel" \
-            --notes "Proxmox kernel $kernel with t2linux patches ($T2_PATCHES_REF)."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" out/*.deb --clobber
+          else
+            gh release create "$tag" out/*.deb \
+              --title "$kernel" \
+              --notes "Proxmox kernel $kernel with t2linux patches ($T2_PATCHES_REF)."
+          fi
+
+      - name: Publish to apt repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: |
+          if [ -z "$APT_SIGNING_KEY" ]; then
+            echo "::warning::APT_SIGNING_KEY is not set, skipping the apt repo"
+            exit 0
+          fi
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils
+          echo "$APT_SIGNING_KEY" | gpg --batch --import
+          ./publish-apt.sh

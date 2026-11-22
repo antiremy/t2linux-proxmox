@@ -1,0 +1,51 @@
+name: Check upstream
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for a new Proxmox kernel
+        id: check
+        run: |
+          set +e
+          ./check-upstream.sh | tee check.log
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and start build
+        if: steps.check.outputs.code == '10'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update to Proxmox kernel ${{ steps.check.outputs.version }}"
+          git push
+          gh workflow run build.yml --ref main
+
+      - name: Open an issue for a new Linux version
+        if: steps.check.outputs.code == '20'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Proxmox kernel moved to a new Linux version"
+          open=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq length)
+          [ "$open" = 0 ] || exit 0
+          gh issue create --title "$title" --body "$(cat check.log)
+
+          Set T2_PATCHES_REF in config.env to the last t2linux commit for the new version, then run the quick patch check."
+
+      - name: Fail on errors
+        if: ${{ !contains(fromJSON('["0","10","20"]'), steps.check.outputs.code) }}
+        run: exit 1
