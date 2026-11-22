@@ -2,7 +2,8 @@
 # Build Proxmox kernel .debs with t2linux patches.
 # Run on Debian trixie (or Proxmox VE 9) amd64 as root, or via ./docker-build.sh.
 # Usage: ./build.sh            full build, debs land in ./out
-#        ./build.sh prepare    only fetch and apply patches (quick check)
+#        ./build.sh prepare    only fetch and apply patches
+#        ./build.sh check      apply patches and compile the folders they touch
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
@@ -55,8 +56,14 @@ add_t2() {
 		is_skipped "$name" && continue
 		cp "$p" patches/kernel/
 	done
+	local extra
+	for extra in $T2_EXTRA; do
+		git -C "$WORK/t2-patches" show "$extra" > "patches/kernel/${extra#*:}"
+	done
 	cp "$ROOT"/patches/*.patch patches/kernel/
 	cat "$ROOT/config-t2.opts" >> debian/rules.d/config-amd64.opts
+	sed -i "s/^\(EXTRAVERSION=.*-pve\)$/\1$KERNEL_SUFFIX/" Makefile
+	grep -q "^EXTRAVERSION=.*-pve$KERNEL_SUFFIX$" Makefile
 	# Proxmox release checks; they compare against stock builds and do not apply here
 	rm -f abi-prev-* fwlist-previous-*
 }
@@ -71,20 +78,37 @@ use_ccache() {
 	ccache -z
 }
 
+t2_dirs() {
+	cat "$WORK"/pve-kernel/patches/kernel/[1-9]*.patch |
+		sed -n 's|^+++ b/\(.*\)/[^/]*\.c$|\1/|p' | sort -u
+}
+
+compile_check() {
+	local opts=$WORK/pve-kernel/debian/rules.d
+	cd "$WORK"/pve-kernel/proxmox-kernel-*/ubuntu-kernel
+	cat "$opts/config-common.opts" "$opts/config-amd64.opts" | xargs scripts/config
+	make olddefconfig
+	make -j"$(nproc)" prepare modules_prepare
+	t2_dirs | xargs make -j"$(nproc)"
+	echo "T2 code compiles."
+}
+
 main() {
 	[ "$(id -u)" = 0 ] && install_deps
 	use_ccache
 	fetch_sources
 	add_t2
 	cd "$WORK/pve-kernel"
+	make PKG_REV_EXTRA="+t2.$T2_REL" ubuntu-kernel.prepared
 
-	if [ "$MODE" = prepare ]; then
-		make KREL_EXTRA="$KREL_EXTRA" PKG_REV_EXTRA="+t2.$T2_REL" ubuntu-kernel.prepared
-		echo "All patches applied."
-		return
-	fi
+	case $MODE in
+	prepare) echo "All patches applied."; return ;;
+	check) compile_check; return ;;
+	esac
 
-	make KREL_EXTRA="$KREL_EXTRA" PKG_REV_EXTRA="+t2.$T2_REL" deb
+	compile_check
+	cd "$WORK/pve-kernel"
+	make PKG_REV_EXTRA="+t2.$T2_REL" deb
 	command -v ccache >/dev/null && ccache -s
 	mkdir -p "$OUT"
 	cp -v ./*.deb "$OUT"/

@@ -4,6 +4,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
+source "$ROOT/config.env"
 OUT=${OUT:-$ROOT/out}
 KEEP=${KEEP:-3}
 TAG=apt
@@ -38,8 +39,8 @@ fetch_repo() {
 
 add_new() {
 	local kernel_deb
-	kernel_deb=$(ls "$OUT"/proxmox-kernel-*-pve_*.deb)
-	cp "$kernel_deb" "$OUT"/proxmox-headers-*-pve_*.deb "$REPO"/
+	kernel_deb=$(ls "$OUT"/proxmox-kernel-*-pve"$KERNEL_SUFFIX"_*.deb)
+	cp "$kernel_deb" "$OUT"/proxmox-headers-*-pve"$KERNEL_SUFFIX"_*.deb "$REPO"/
 	make_meta "$kernel_deb"
 }
 
@@ -50,7 +51,7 @@ prune() {
 		echo "$(field "$f" Package) $(field "$f" Version) $f"
 	done | sort -k1,1 -k2,2Vr | awk 'seen[$1]++ {print $3}' | xargs -r rm -v
 
-	ls proxmox-kernel-*-pve_*.deb | sed 's/^proxmox-kernel-//; s/_.*//' | sort -Vr |
+	ls proxmox-kernel-*-pve"$KERNEL_SUFFIX"_*.deb | sed 's/^proxmox-kernel-//; s/_.*//' | sort -Vr |
 		tail -n +"$((KEEP + 1))" | while read -r kv; do
 		rm -v "proxmox-kernel-${kv}_"*.deb "proxmox-headers-${kv}_"*.deb
 	done

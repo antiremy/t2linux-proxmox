@@ -1,6 +1,8 @@
 From t2linux/linux-t2-patches 7ee7d19, refreshed for Proxmox 7.0.14-30.
 Proxmox already has an upstream magicmouse_reset_resume() for USB mice,
 so the SPI trackpad check is added to it instead of a second copy.
+Proxmox also has the upstream DOUBLE_REPORT_ID recursion limit. The USB
+handler now takes the "nested" flag itself, since it is split out here.
 
 diff --git a/drivers/hid/Kconfig b/drivers/hid/Kconfig
 index e4426a7..8914289 100644
@@ -1408,7 +1410,7 @@ index 3cd42de..1b2e8fb 100644
  #define USB_VENDOR_ID_ASETEK			0x2433
  #define USB_DEVICE_ID_ASETEK_INVICTA		0xf300
 diff --git a/drivers/hid/hid-magicmouse.c b/drivers/hid/hid-magicmouse.c
-index 0480e7d..f55d99b 100644
+index 0480e7d..61980c0 100644
 --- a/drivers/hid/hid-magicmouse.c
 +++ b/drivers/hid/hid-magicmouse.c
 @@ -60,8 +60,14 @@ MODULE_PARM_DESC(report_undeciphered, "Report undeciphered multi-touch state fie
@@ -1617,25 +1619,45 @@ index 0480e7d..f55d99b 100644
  	msc->touches[id].size = size;
  
  	/* If requested, emulate a scroll wheel by detecting small
-@@ -387,6 +514,14 @@ static int __magicmouse_raw_event(struct hid_device *hdev,
+@@ -383,7 +510,7 @@ static void magicmouse_emit_touch(struct magicmouse_sc *msc, int raw_id, u8 *tda
+ 	}
+ }
+ 
+-static int __magicmouse_raw_event(struct hid_device *hdev,
++static int __magicmouse_raw_event_usb(struct hid_device *hdev,
  		struct hid_report *report, u8 *data, int size, bool nested)
  {
  	struct magicmouse_sc *msc = hid_get_drvdata(hdev);
+@@ -515,8 +642,8 @@ static int __magicmouse_raw_event(struct hid_device *hdev,
+ 			return 0;
+ 		}
+ 
+-		__magicmouse_raw_event(hdev, report, data + 2, data[1], true);
+-		__magicmouse_raw_event(hdev, report, data + 2 + data[1],
++		__magicmouse_raw_event_usb(hdev, report, data + 2, data[1], true);
++		__magicmouse_raw_event_usb(hdev, report, data + 2 + data[1],
+ 			size - 2 - data[1], true);
+ 		return 0;
+ 	default:
+@@ -543,10 +670,186 @@ static int __magicmouse_raw_event(struct hid_device *hdev,
+ 	return 1;
+ }
+ 
++static int magicmouse_raw_event_usb(struct hid_device *hdev,
++		struct hid_report *report, u8 *data, int size)
++{
++	return __magicmouse_raw_event_usb(hdev, report, data, size, false);
++}
++
+ static int magicmouse_raw_event(struct hid_device *hdev,
+ 		struct hid_report *report, u8 *data, int size)
+ {
+-	return __magicmouse_raw_event(hdev, report, data, size, false);
++	struct magicmouse_sc *msc = hid_get_drvdata(hdev);
 +
 +	return msc->input_ops.raw_event(hdev, report, data, size);
 +}
 +
-+static int magicmouse_raw_event_usb(struct hid_device *hdev,
-+		struct hid_report *report, u8 *data, int size)
-+{
-+	struct magicmouse_sc *msc = hid_get_drvdata(hdev);
- 	struct input_dev *input = msc->input;
- 	int x = 0, y = 0, ii, clicks = 0, npoints;
- 
-@@ -549,6 +684,174 @@ static int magicmouse_raw_event(struct hid_device *hdev,
- 	return __magicmouse_raw_event(hdev, report, data, size, false);
- }
- 
 +/**
 + * struct tp_finger - single trackpad finger structure, le16-aligned
 + *
@@ -1802,11 +1824,9 @@ index 0480e7d..f55d99b 100644
 +		return 0;
 +
 +	return magicmouse_raw_event_mtp(hdev, report, data + hdr_sz, size - hdr_sz);
-+}
-+
+ }
+ 
  static int magicmouse_event(struct hid_device *hdev, struct hid_field *field,
- 		struct hid_usage *usage, __s32 value)
- {
 @@ -567,7 +870,17 @@ static int magicmouse_event(struct hid_device *hdev, struct hid_field *field,
  	return 0;
  }
