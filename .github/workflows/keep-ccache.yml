@@ -1,0 +1,33 @@
+name: Keep ccache
+
+# GitHub deletes caches not used for 7 days. Kernel builds can be weeks apart,
+# so restore the newest ccache twice a week to keep it alive.
+
+on:
+  schedule:
+    - cron: "43 4 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore ccache
+        id: cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ccache
+          key: ccache-none
+          restore-keys: ccache-
+
+      - name: Report
+        run: |
+          if [ -z "${{ steps.cache.outputs.cache-matched-key }}" ]; then
+            echo "::notice::No ccache yet. The next kernel build makes one."
+          else
+            echo "Kept ${{ steps.cache.outputs.cache-matched-key }}"
+            du -sh ccache
+          fi

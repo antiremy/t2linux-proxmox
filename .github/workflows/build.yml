@@ -33,12 +33,26 @@ jobs:
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Restore ccache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ccache
+          key: ccache-${{ github.run_id }}
+          restore-keys: ccache-
+
       - name: Build
         run: |
           docker run --rm \
             -v "$PWD":/repo \
-            -e WORK=/repo/work -e OUT=/repo/out \
+            -e WORK=/repo/work -e OUT=/repo/out -e CCACHE_DIR=/repo/ccache \
             debian:trixie /repo/build.sh
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ccache
+          key: ccache-${{ github.run_id }}
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

@@ -16,7 +16,7 @@ install_deps() {
 	apt-get update
 	apt-get install -y --no-install-recommends \
 		asciidoc-base automake autoconf bc bindgen bison build-essential ca-certificates \
-		cpio debhelper dh-python dwarves file flex gawk git kmod libdw-dev libelf-dev \
+		ccache cpio debhelper dh-python dwarves file flex gawk git kmod libdw-dev libelf-dev \
 		libiberty-dev libnuma-dev libslang2-dev libssl-dev libtool lintian lz4 patch \
 		python3-dev python3-minimal rsync rustc rust-src rustfmt rust-clippy \
 		sphinx-common xmlto zlib1g-dev zstd
@@ -61,8 +61,19 @@ add_t2() {
 	rm -f abi-prev-* fwlist-previous-*
 }
 
+use_ccache() {
+	[ -d /usr/lib/ccache ] || return 0
+	export PATH=/usr/lib/ccache:$PATH
+	export CCACHE_DIR=${CCACHE_DIR:-$WORK/ccache}
+	# The build folder name holds the kernel version, so leave paths out of the hash
+	export CCACHE_BASEDIR=$WORK CCACHE_NOHASHDIR=1
+	export CCACHE_COMPILERCHECK=content CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-6G}
+	ccache -z
+}
+
 main() {
 	[ "$(id -u)" = 0 ] && install_deps
+	use_ccache
 	fetch_sources
 	add_t2
 	cd "$WORK/pve-kernel"
@@ -74,6 +85,7 @@ main() {
 	fi
 
 	make KREL_EXTRA="$KREL_EXTRA" PKG_REV_EXTRA="+t2.$T2_REL" deb
+	command -v ccache >/dev/null && ccache -s
 	mkdir -p "$OUT"
 	cp -v ./*.deb "$OUT"/
 }
