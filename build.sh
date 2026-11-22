@@ -56,8 +56,14 @@ add_t2() {
 		is_skipped "$name" && continue
 		cp "$p" patches/kernel/
 	done
+	local extra
+	for extra in $T2_EXTRA; do
+		git -C "$WORK/t2-patches" show "$extra" > "patches/kernel/${extra#*:}"
+	done
 	cp "$ROOT"/patches/*.patch patches/kernel/
 	cat "$ROOT/config-t2.opts" >> debian/rules.d/config-amd64.opts
+	sed -i "s/^\(EXTRAVERSION=.*-pve\)$/\1$KERNEL_SUFFIX/" Makefile
+	grep -q "^EXTRAVERSION=.*-pve$KERNEL_SUFFIX$" Makefile
 	# Proxmox release checks; they compare against stock builds and do not apply here
 	rm -f abi-prev-* fwlist-previous-*
 }
@@ -93,7 +99,7 @@ main() {
 	fetch_sources
 	add_t2
 	cd "$WORK/pve-kernel"
-	make KREL_EXTRA="$KREL_EXTRA" PKG_REV_EXTRA="+t2.$T2_REL" ubuntu-kernel.prepared
+	make PKG_REV_EXTRA="+t2.$T2_REL" ubuntu-kernel.prepared
 
 	case $MODE in
 	prepare) echo "All patches applied."; return ;;
@@ -102,7 +108,7 @@ main() {
 
 	compile_check
 	cd "$WORK/pve-kernel"
-	make KREL_EXTRA="$KREL_EXTRA" PKG_REV_EXTRA="+t2.$T2_REL" deb
+	make PKG_REV_EXTRA="+t2.$T2_REL" deb
 	command -v ccache >/dev/null && ccache -s
 	mkdir -p "$OUT"
 	cp -v ./*.deb "$OUT"/

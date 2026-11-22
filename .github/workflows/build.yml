@@ -64,7 +64,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           source config.env
-          kernel=$(ls out/proxmox-kernel-*-pve_*.deb | grep -v signed | head -1 | sed 's|out/proxmox-kernel-||; s|_.*||')
+          kernel=$(ls out/proxmox-kernel-*-pve"$KERNEL_SUFFIX"_*.deb | head -1 | sed 's|out/proxmox-kernel-||; s|_.*||')
           tag="v${kernel}.${T2_REL}"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" out/*.deb --clobber

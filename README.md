@@ -3,9 +3,10 @@
 Builds the Proxmox VE 9 kernel with the [t2linux](https://wiki.t2linux.org/) patches.
 Made for a late 2018 Mac mini (Macmini8,1).
 
-The result is a normal Proxmox kernel named `7.0.14-30-t2-pve`.
+The result is a Proxmox kernel named `7.0.14-30-pve-t2`.
 It adds T2 support: the `apple-bce` driver (audio, internal USB), fan control
-through `applesmc`, Bluetooth, and the APFS driver.
+through `applesmc`, Bluetooth, and the APFS driver. It also has the t2linux
+patch that turns on Bluetooth for the 2019 Mac Pro.
 
 ## What is here
 
@@ -117,8 +118,8 @@ The repo keeps the 3 newest kernels.
 GitHub release, then:
 
 ```sh
-apt install ./proxmox-kernel-7.0.14-30-t2-pve_*.deb ./proxmox-headers-7.0.14-30-t2-pve_*.deb
-proxmox-boot-tool kernel pin 7.0.14-30-t2-pve
+apt install ./proxmox-kernel-7.0.14-30-pve-t2_*.deb ./proxmox-headers-7.0.14-30-pve-t2_*.deb
+proxmox-boot-tool kernel pin 7.0.14-30-pve-t2
 ```
 
 Only install those two. Skip `proxmox-kernel-7.0_*`, `proxmox-headers-7.0_*`
@@ -143,7 +144,7 @@ reboot
 ### Check it works
 
 ```sh
-uname -r                 # 7.0.14-30-t2-pve
+uname -r                 # 7.0.14-30-pve-t2
 lsmod | grep apple_bce
 ls /sys/devices/platform/applesmc.768/ 2>/dev/null || ls /sys/bus/acpi/drivers/applesmc/
 ```
@@ -179,7 +180,7 @@ Most updates are automatic. Do this for a new Linux version, or to rebuild.
 
 ```sh
 apt remove proxmox-kernel-t2    # also unpins the kernel
-apt remove 'proxmox-kernel-*-t2-pve' 'proxmox-headers-*-t2-pve'
+apt remove 'proxmox-kernel-*-pve-t2' 'proxmox-headers-*-pve-t2'
 ```
 
 ## Set up the apt signing key (once, for the repo owner)
