@@ -17,6 +17,7 @@ through `applesmc`, Bluetooth, and the APFS driver.
 | `build.sh` | Fetches sources, adds patches, builds `.deb` files into `out/` |
 | `docker-build.sh` | Runs `build.sh` in a Debian trixie container |
 | `.github/workflows/build.yml` | Builds on GitHub Actions, makes a release, updates the apt repo |
+| `.github/workflows/keep-ccache.yml` | Touches the build's ccache twice a week so GitHub does not delete it |
 | `check-upstream.sh` | Moves `config.env` to the newest Proxmox kernel release |
 | `.github/workflows/check-upstream.yml` | Runs `check-upstream.sh` daily and starts a build when needed |
 | `publish-apt.sh` | Adds a build to the apt repo on the `apt` GitHub release |
@@ -38,6 +39,9 @@ If a patch stops applying, the build fails and GitHub emails you.
 
 A kernel build takes about 2.5 hours on GitHub's 4 core runner and needs about 30 GB of disk.
 It must build on an x86_64 (amd64) machine.
+
+Builds use ccache. When only a little source changed since the last build, the next one is much faster.
+On GitHub the cache is saved after each build. With Docker it lives in the `t2pve-ccache` volume.
 
 ### Option 1: GitHub Actions (best on an Apple Silicon Mac)
 
