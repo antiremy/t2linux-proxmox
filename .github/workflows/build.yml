@@ -1,0 +1,51 @@
+name: Build kernel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - config.env
+      - config-t2.opts
+      - patches/**
+      - build.sh
+      - .github/workflows/build.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost
+          docker image prune -af
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          docker run --rm \
+            -v "$PWD":/repo \
+            -e WORK=/repo/work -e OUT=/repo/out \
+            debian:trixie /repo/build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debs
+          path: out/*.deb
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source config.env
+          kernel=$(ls out/proxmox-kernel-*-pve_*.deb | grep -v signed | head -1 | sed 's|out/proxmox-kernel-||; s|_.*||')
+          tag="v${kernel}.${T2_REL}"
+          gh release create "$tag" out/*.deb \
+            --title "$kernel" \
+            --notes "Proxmox kernel $kernel with t2linux patches ($T2_PATCHES_REF)."
