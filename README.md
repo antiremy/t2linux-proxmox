@@ -73,6 +73,14 @@ To see if all patches apply, without a full build:
 PLATFORM=linux/arm64 ./docker-build.sh prepare
 ```
 
+To also compile the folders the t2 patches touch (about 15 minutes on 4 cores):
+
+```sh
+./docker-build.sh check
+```
+
+A full build runs this check first, so a broken patch fails early.
+
 ## Install Proxmox on the Mac mini
 
 1. Boot macOS Recovery (hold Cmd+R at power on).
