@@ -39,13 +39,13 @@ If a patch stops applying, the build fails and GitHub emails you.
 A kernel build takes about 2.5 hours on GitHub's 4 core runner and needs about 30 GB of disk.
 It must build on an x86_64 (amd64) machine.
 
-**Option 1: GitHub Actions (best on an Apple Silicon Mac)**
+### Option 1: GitHub Actions (best on an Apple Silicon Mac)
 
 1. Push this repo to GitHub.
 2. Go to Actions, pick "Build kernel", press "Run workflow".
 3. When it ends, the `.deb` files are on the Releases page.
 
-**Option 2: On the Mac mini, after Proxmox is installed**
+### Option 2: On the Mac mini, after Proxmox is installed
 
 ```sh
 apt install git
@@ -53,7 +53,7 @@ git clone <this repo> && cd t2linux-proxmox
 ./build.sh
 ```
 
-**Option 3: Any amd64 machine with Docker**
+### Option 3: Any amd64 machine with Docker
 
 ```sh
 ./docker-build.sh
