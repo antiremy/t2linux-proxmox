@@ -64,6 +64,8 @@ add_t2() {
 	cat "$ROOT/config-t2.opts" >> debian/rules.d/config-amd64.opts
 	sed -i "s/^\(EXTRAVERSION=.*-pve\)$/\1$KERNEL_SUFFIX/" Makefile
 	grep -q "^EXTRAVERSION=.*-pve$KERNEL_SUFFIX$" Makefile
+	sed -i "1 s/^\(proxmox-kernel-[^ ]* (\)$PVE_KERNEL_VERSION)/\1$PVE_KERNEL_VERSION+t2.$T2_REL)/" debian/changelog
+	grep -q "($PVE_KERNEL_VERSION+t2.$T2_REL)" debian/changelog
 	# Proxmox release checks; they compare against stock builds and do not apply here
 	rm -f abi-prev-* fwlist-previous-*
 }
