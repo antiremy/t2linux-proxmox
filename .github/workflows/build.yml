@@ -27,6 +27,7 @@ jobs:
     steps:
       - name: Free disk space
         run: |
+          df -h /
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost
           docker image prune -af
           df -h /
@@ -46,6 +47,10 @@ jobs:
             -v "$PWD":/repo \
             -e WORK=/repo/work -e OUT=/repo/out -e CCACHE_DIR=/repo/ccache \
             debian:trixie /repo/build.sh
+
+      - name: Disk usage after build
+        if: always()
+        run: df -h /
 
       - name: Save ccache
         if: always()
