@@ -77,6 +77,7 @@ jobs:
       - name: Publish to apt repo
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
         run: |
           if [ -z "$APT_SIGNING_KEY" ]; then
